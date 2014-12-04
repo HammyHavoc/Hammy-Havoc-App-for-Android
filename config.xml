@@ -12,8 +12,9 @@
 	<author href="https://www.hammyhavoc.com" email="me@hammyhavoc.com">Hammy Havoc</author>
 
 	<gap:platform name="ios" />
-	
-	<preference name="DisallowOverscroll" value="true" />
+  <gap:platform name="winphone" />
+
+  <preference name="DisallowOverscroll" value="true" />
 	<preference name="webviewbounce" value="false" />
 	
 	<!-- Add Icon, Splash screen and any PhoneGap plugin declaration here -->
