@@ -5,7 +5,7 @@ define( function ( require ) {
 	return {
 		app_slug : 'hammy-havoc-ios',
 		wp_ws_url : 'https://www.hammyhavoc.com/app-kit-api/hammy-havoc-ios',
-		theme : 'nihao-ios',
+		theme : 'bootstrap',
 		version : '1.0',
 		app_title : 'Hammy Havoc',
 		debug_mode : 'off',
