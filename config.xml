@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<widget xmlns       = "http://www.w3.org/ns/widgets"
+        xmlns:gap   = "http://phonegap.com/ns/1.0"
+        id          = ""
+        versionCode = ""
+        version     = "1.0" >
+
+	<name>Hammy Havoc</name>
+
+	<description></description>
+
+	<author href="https://www.hammyhavoc.com" email="me@hammyhavoc.com">Hammy Havoc</author>
+
+	<gap:platform name="ios" />
+	
+	<preference name="DisallowOverscroll" value="true" />
+	<preference name="webviewbounce" value="false" />
+	
+	<!-- Add Icon, Splash screen and any PhoneGap plugin declaration here -->
+
+	<gap:plugin name="org.apache.cordova.inappbrowser" />
+	<gap:plugin name="org.apache.cordova.network-information" />
+	<gap:plugin name="com.phonegap.plugin.statusbar" />
+
+</widget>
