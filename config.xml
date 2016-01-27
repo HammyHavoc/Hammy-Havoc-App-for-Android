@@ -3,22 +3,28 @@
         xmlns:gap   = "http://phonegap.com/ns/1.0"
         id          = "com.hammyhavoc"
         versionCode = ""
-        version     = "" >
+        version     = "1.0" >
 
 	<name>Hammy Havoc</name>
 
 	<description></description>
 
-	<author href="https://www.hammyhavoc.com" email="me@hammyhavoc.com"></author>
+	<author href="https://www.hammyhavoc.com" email="me@hammyhavoc.com">Hammy Havoc</author>
 
 	<gap:platform name="android" />
 
 	<preference name="disallowOverscroll" value="true" />
 	<preference name="webviewbounce" value="false" />
 
-	<!-- Add Icon, Splash screen and any PhoneGap plugin declaration here -->
+	<!-- PhoneGap plugin declaration -->
+	<gap:plugin name="cordova-plugin-inappbrowser" source="npm" />
+	<gap:plugin name="cordova-plugin-network-information" source="npm" />
+	<gap:plugin name="cordova-plugin-whitelist" source="npm" />
+	
+	<!-- Whitelist policy  -->
+	<access origin="*" />
+	<allow-intent href="*" />
+	<allow-navigation href="*" />
 
-	<gap:plugin name="org.apache.cordova.inappbrowser" />
-	<gap:plugin name="org.apache.cordova.network-information" />
-
+	<!-- Icon and Splash screen declaration -->
 </widget>
