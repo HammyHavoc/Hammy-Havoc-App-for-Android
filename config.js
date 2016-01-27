@@ -5,7 +5,7 @@ define( function ( require ) {
 	return {
 		app_slug : 'hammy-havoc-android',
 		wp_ws_url : 'https://www.hammyhavoc.com/wp-appkit-api/hammy-havoc-android',
-		theme : 'wpak-tabs-ios',
+		theme : 'wpak-tabs-android',
 		version : '1.0',
 		app_title : 'Hammy Havoc',
 		debug_mode : 'off',
