@@ -3,8 +3,10 @@ define(function (require) {
     "use strict";
 
     var Backbone       = require('backbone'),
+		_              = require('underscore'),
     	Utils          = require('core/app-utils'),
-        RegionManager  = require("core/region-manager");
+        RegionManager  = require("core/region-manager"),
+		Hooks          = require('core/lib/hooks');
 
     var default_route = '';
 
@@ -25,7 +27,8 @@ define(function (require) {
             "page/:component_id/:page_id" : "page",
             "comments-:post_id" : "comments",
             "component-:id" : "component",
-            "custom-page" : "custom_page"
+            "custom-page" : "custom_page",
+			'*notFound': "not_found"
         },
 
         setDefaultRoute: function(_default_route){
@@ -39,33 +42,28 @@ define(function (require) {
         default_route: function(){
         	this.navigate(default_route, {trigger: true});
         },
-
+		
         component: function (component_id) {
         	var _this = this;
 			route_asked = 'component-'+ component_id;
         	require(["core/app"],function(App){
         		var component = App.getComponentData(component_id);
-
         		if( component ) {
 					if( check_route('component-'+ component_id) ){
 						switch( component.type ){
 							case 'posts-list':
-                                App.setQueriedScreen({screen_type:'list',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label});
-                                require(["core/views/archive"],function(ArchiveView){
-                                    var view = new ArchiveView(component.view_data);
-                                    view.checkTemplate(function(){
-                                        RegionManager.show(view);
-                                    });
-                                });
+								RegionManager.show(
+									'posts-list',
+									component.view_data,
+									{screen_type:'list',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label}
+								);
                                 break;
                             case 'favorites':
-								App.setQueriedScreen({screen_type:'list',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label});
-								require(["core/views/favorites"],function(ArchiveView){
-									var view = new ArchiveView(component.view_data);
-									view.checkTemplate(function(){
-										RegionManager.show(view);
-									});
-								});
+								RegionManager.show(
+									'favorites',
+									component.view_data,
+									{screen_type:'list',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label}
+								);
 								break;
 							case 'page':
 								//Directly redirect to "page" route :
@@ -73,13 +71,26 @@ define(function (require) {
 								break;
 							case 'hooks-list':
 							case 'hooks-no-global':
-								App.setQueriedScreen({screen_type:'custom-component',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label});
-								require(["core/views/custom-component"],function(CustomComponentView){
-									var view = new CustomComponentView({component:component});
-									view.checkTemplate(function(){
-										RegionManager.show(view);
-									});
-								});
+								RegionManager.show(
+									'hooks',
+									{component:component},
+									{screen_type:'custom-component',component_id:component_id,item_id:0,global:component.global,data:component.data,label:component.label}
+								);
+								break;
+							default:
+								var screen_view_data = {
+									view_type: '',
+									view_data: {},
+									screen_data: {}
+								};
+								screen_view_data = Hooks.applyFilters('component-custom-type',screen_view_data,[component]);
+								if( screen_view_data.view_type !== '' ) {
+									RegionManager.show(
+										screen_view_data.view_type,
+										screen_view_data.view_data,
+										screen_view_data.screen_data
+									);
+								}
 								break;
 						}
 					}
@@ -105,13 +116,11 @@ define(function (require) {
 		        		var item_data = item_global == 'posts' ? {post:item_json} : {item:item_json};
 
 						if( check_route('single/'+ item_global +'/'+ item_id) ){
-							App.setQueriedScreen({screen_type:'single',component_id:'',item_id:parseInt(item_id),global:item_global,data:item_data,label:item_json.title});
-							require(["core/views/single"],function(SingleView){
-								var view = new SingleView({item:item,global:item_global});
-								view.checkTemplate(function(){
-									RegionManager.show(view);
-								});
-							});
+							RegionManager.show(
+								'single',
+								{item:item,global:item_global},
+								{screen_type:'single',component_id:'',item_id:parseInt(item_id),global:item_global,data:item_data,label:item_json.title}
+							);
 						}
 
 		        	}else{
@@ -146,13 +155,11 @@ define(function (require) {
 			        		};
 
 							if( check_route('page/'+ component_id +'/'+ page_id) ){
-								App.setQueriedScreen({screen_type:'page',component_id:component_id,item_id:parseInt(page_id),global:item_global,data:item_data,label:item_data.item.title});
-								require(["core/views/page"],function(PageView){
-									var view = new PageView({item:item,global:item_global});
-									view.checkTemplate(function(){
-										RegionManager.show(view);
-									});
-								});
+								RegionManager.show(
+									'page',
+									{item:item,global:item_global},
+									{screen_type:'page',component_id:component_id,item_id:parseInt(page_id),global:item_global,data:item_data,label:item_data.item.title}
+								);
 							}
 
 		        		}else{
@@ -171,8 +178,8 @@ define(function (require) {
         },
 
         comments: function (post_id) {
-        	require(["core/app","core/views/comments"],function(App,CommentsView){
-        		App.setQueriedScreen({screen_type:'comments',component_id:'',item_id:parseInt(post_id)});
+        	require(["core/app"],function(App){
+        		//App.setQueriedScreen({screen_type:'comments',component_id:'',item_id:parseInt(post_id)}); //done in RegionManager.show() now
         		RegionManager.startWaiting();
 	        	App.getPostComments(
 	        		post_id,
@@ -181,10 +188,11 @@ define(function (require) {
 	        			//Check if we are still on the right post :
 	        			var current_screen = App.getCurrentScreenData();
 	        			if( current_screen.screen_type == 'single' && current_screen.item_id == post_id ){
-		        			var view = new CommentsView({comments:comments,post:post});
-    						view.checkTemplate(function(){
-								RegionManager.show(view);
-							});
+							RegionManager.show(
+								'comments',
+								{comments:comments,post:post},
+								{screen_type:'comments',component_id:'',item_id:parseInt(post_id)}
+							);
 	        			}
 		        	},
 		        	function(error){
@@ -197,15 +205,15 @@ define(function (require) {
 
         custom_page: function(){
 			route_asked = 'custom-page';
-        	require(["core/app","core/views/custom-page"],function(App,CustomPageView){
+        	require(["core/app"],function(App){
         		var current_custom_page = App.getCurrentCustomPage();
         		if( current_custom_page !== null ){
 					if( check_route('custom-page') ){
-						App.setQueriedScreen({screen_type:'custom-page',component_id:'',item_id:0,data:current_custom_page});
-						var view = new CustomPageView({custom_page:current_custom_page});
-						view.checkTemplate(function(){
-							RegionManager.show(view);
-						});
+						RegionManager.show(
+							'custom-page',
+							{custom_page:current_custom_page},
+							{screen_type:'custom-page',component_id:'',item_id:current_custom_page.get('id'),data:{custom_page:current_custom_page}}
+						);
 					}
         		}
         	});
@@ -229,6 +237,24 @@ define(function (require) {
                     Backbone.history.loadUrl( screen.fragment );
                 }
             });
+        },
+		
+		not_found: function(fragment){
+			var _this = this;
+			require(["core/app"],function(App){
+				var fragment_not_found = Hooks.applyFilters('fragment-not-found', '#', [fragment]);
+				
+				var custom_route = App.getCustomRoute(fragment);
+				if( !_.isEmpty(custom_route) ){
+					fragment_not_found = '';
+					App.showCustomPage(custom_route.template,custom_route.data,fragment);
+				}
+
+				if( fragment_not_found.length ){
+					_this.navigate(fragment_not_found, {trigger: true});
+				}
+			});
+			
         }
 
     });

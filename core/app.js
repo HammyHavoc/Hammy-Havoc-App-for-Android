@@ -17,6 +17,7 @@ define(function (require) {
           Utils               = require('core/app-utils'),
           Hooks               = require('core/lib/hooks'),
 		  Stats               = require('core/stats'),
+		  Addons              = require('core/addons-internal'),
           Sha256              = require('core/lib/sha256');
 
 	  var app = {};
@@ -41,10 +42,11 @@ define(function (require) {
 	  };
 
 	  //--------------------------------------------------------------------------
-	  //Custom pages handling
+	  //Custom pages and routes handling
 
 	  var current_custom_page = null;
-
+	  var custom_routes = {};
+	  
 	  app.getCurrentCustomPage = function(){
 		  return current_custom_page;
 	  };
@@ -53,11 +55,33 @@ define(function (require) {
 	   * Displays a custom page using the given template.
 	   * @param data see models/custom-page.js for data fields
 	   */
-	  app.showCustomPage = function(template,data){
-		  current_custom_page = new CustomPage({template: template, data: data});
+	  app.showCustomPage = function(template,data,id){
+		  var args = {template: template, data: data};
+		  if( id !== undefined ){
+			  args.id = id;
+		  }
+		  current_custom_page = new CustomPage(args);
 		  app.router.navigate('#custom-page',{trigger: true});
 	  };
 
+	  app.addCustomRoute = function( fragment, template, data ) {
+		  custom_routes[fragment] = { template: template, data: data };
+	  };
+	  
+	  app.removeCustomRoute = function( fragment ) {
+		  if( custom_routes.hasOwnProperty(fragment) ) {
+			  delete custom_routes[fragment];
+		  }
+	  };
+	
+	  app.getCustomRoute = function( fragment ) {
+		  var route = {};
+		  if( custom_routes.hasOwnProperty(fragment) ) {
+			  route = custom_routes[fragment];
+		  }
+		  return route;
+	  };
+	  
 	  //--------------------------------------------------------------------------
 	  //App params :
 	  //Params that can be changed by themes dynamically : themes can freely change
@@ -116,8 +140,8 @@ define(function (require) {
 		/**
 		 * Hook : filter 'default-route' : use this to define your own default route
 		 */
-		default_route = Hooks.applyFilter('default-route',default_route,[Stats.getStats(),is_app_launch]);
-
+		default_route = Hooks.applyFilters('default-route',default_route,[Stats.getStats(),is_app_launch]);
+		  
 		if( default_route != '' ){
 			app.router.setDefaultRoute(default_route);
 		}
@@ -137,10 +161,10 @@ define(function (require) {
 		 * navigation to launch route is canceled. Then you should navigate manually
 		 * to a choosen page in the "info:app-ready" event for example.
 		 */
-		launch_route = Hooks.applyFilter('launch-route',launch_route,[Stats.getStats()]);
-
-		Hooks.doAction('pre-start-router',[launch_route,Stats.getStats()]);
-
+		launch_route = Hooks.applyFilters('launch-route',launch_route,[Stats.getStats()]);
+		
+		Hooks.doActions('pre-start-router',[launch_route,Stats.getStats()]);
+		
 		if( launch_route.length > 0 ){
 			Backbone.history.start();
 			//Navigate to the launch_route :
@@ -211,7 +235,7 @@ define(function (require) {
 	  app.getQueriedScreen = function(){
 		  return queried_screen_data;
 	  };
-
+	  
 	  /**
 	   * Pushes the queried screen to the history stack according to the screen type and where we're from.
 	   */
@@ -231,24 +255,23 @@ define(function (require) {
 				  history_stack = [];
 			  }
 
+			  var history_action = '';
+
 			  if( queried_screen_data.screen_type == 'list' ){
-				  history_stack = [];
-				  history_push(queried_screen_data);
+				  history_action = 'empty-then-push';
 			  }else if( queried_screen_data.screen_type == 'single' ){
 				  if( current_screen.screen_type == 'list' ){
-					  history_push(queried_screen_data);
+					  history_action = 'push';
 				  }else if( current_screen.screen_type == 'custom-component' ){
-					  history_push(queried_screen_data);
+					  history_action = 'push';
 				  }else if( current_screen.screen_type == 'comments' ){
 					  if( previous_screen.screen_type == 'single' && previous_screen.item_id == queried_screen_data.item_id ){
-						  history_stack.pop();
+						  history_action = 'pop';
 					  }else{
-						  history_stack = [];
-						  history_push(queried_screen_data);
+						  history_action = 'empty-then-push';
 					  }
 				  }else{
-					  history_stack = [];
-					  history_push(queried_screen_data);
+					  history_action = 'empty-then-push';
 				  }
 			  }else if( queried_screen_data.screen_type == 'page' ){
 				  if( current_screen.screen_type == 'page'
@@ -259,30 +282,44 @@ define(function (require) {
 						  && previous_screen.component_id == queried_screen_data.component_id
 						  && previous_screen.item_id == queried_screen_data.item_id
 						  ){
-						  history_stack.pop();
+						  history_action = 'pop';
 					  }else{
-						  history_push(queried_screen_data);
+						  history_action = 'push';
 					  }
 
 				  }else{
-					  history_stack = [];
-					  history_push(queried_screen_data);
+					  history_action = 'empty-then-push';
 				  }
 			  }else if( queried_screen_data.screen_type == 'comments' ){
 				  //if( current_screen.screen_type == 'single' && current_screen.item_id == item_id ){
-					  history_push(queried_screen_data);
+					  history_action = 'push';
 				  //}
 			  }else if( queried_screen_data.screen_type == 'custom-page' ){
-				  history_stack = [];
-				  history_push(queried_screen_data);
+				  history_action = 'empty-then-push';
 			  }else if( queried_screen_data.screen_type == 'custom-component' ){
-				  history_stack = [];
-				  history_push(queried_screen_data);
+				  history_action = 'empty-then-push';
 			  }else{
-				  history_stack = [];
+				  history_action = 'empty';
 			  }
-
-		  }
+			}
+			
+			history_action = Hooks.applyFilters( 'make-history', history_action, [ history_stack, queried_screen_data, current_screen, previous_screen ] );
+			
+			switch ( history_action ) {
+				case 'empty-then-push':
+					history_stack = [];
+					history_push( queried_screen_data );
+					break;
+				case 'empty':
+					history_stack = [];
+					break;
+				case 'push':
+					history_push( queried_screen_data );
+					break;
+				case 'pop':
+					history_stack.pop();
+					break;
+			}
 
 	  };
 
@@ -380,7 +417,7 @@ define(function (require) {
 	    	  token = window.btoa(hash);
 		  }
 
-		  token = Hooks.applyFilter('get-token',token,[key,web_service]);
+		  token = Hooks.applyFilters('get-token',token,[key,web_service]);
 
 		  if( token.length ){
 			  token = '/'+ token;
@@ -491,8 +528,9 @@ define(function (require) {
 								  });
 								  globals_keys.saveAll();
 
-								  app.options.set( { id: 'last_updated', value: Date.now() }, { remove: false } );
-								  app.options.saveAll();
+								  Stats.incrementContentLastUpdate();
+
+								  Addons.setDynamicDataFromWebService( data.addons );
 
 								  Utils.log('Components, navigation and globals retrieved from online.',{components:app.components,navigation:app.navigation,globals:app.globals});
 
@@ -718,6 +756,7 @@ define(function (require) {
     	  var component_data = null;
 
     	  var component = app.components.get(component_id);
+		  
     	  if( component ){
     		  var component_type = component.get('type');
     		  switch(component_type){
@@ -792,7 +831,14 @@ define(function (require) {
 		        						  data: data
 			        				  };
 			    				  }
-			    			  }
+			    			  }else{
+									//We have a global, but no ids : it's just as if we had no global :
+									component_data = {
+										type: 'hooks-no-global',
+										view_data: data,
+										data: data
+									};
+							  }
 		    			  }else{
 		    				  Utils.log('app.js warning : custom component has a global but no ids : the global will be ignored.');
 		    				  component_data = {
@@ -807,8 +853,19 @@ define(function (require) {
   			    			  {type:'wrong-data',where:'app::getComponentData',message: 'Custom component has no data attribute',data:{component:component}},
   			    			  cb_error
   			    		  );
-    		  		  }sy
+    		  		  }
 	    			  break;
+				  default:
+						component_data = {
+							type: '',
+							view_data: {},
+							data: {}
+						};
+						component_data = Hooks.applyFilters('component-data',component_data,[component]);
+						if( component_data.type == '' ) {
+							component_data = null;
+						}
+						break;
     		  }
     	  };
 
@@ -819,19 +876,48 @@ define(function (require) {
     	  return component_data;
       };
 
-      app.getGlobalItems = function(global_key,items_ids){
+      app.getGlobalItems = function(global_key,items_ids,raw_items){
     	  var items = []; //Must be an array (and not JSON object) to keep items order.
+
+		  raw_items = raw_items === undefined ? false : ( raw_items === true );
 
     	  if( _.has(app.globals,global_key) ){
 			  var global = app.globals[global_key];
-			  _.each(items_ids,function(item_id, index){
-				  var item = global.get(item_id);
-				  items.push(item ? item.toJSON() : null);
-			  });
+			  if( items_ids !== undefined && items_ids.length ) {
+				_.each(items_ids,function(item_id, index){
+					var item = global.get(item_id);
+					if( item ) {
+						items.push( raw_items ? item : item.toJSON() );
+					}
+				});
+			  } else {
+				  global.each( function(item, key){
+					  items.push( raw_items ? item : item.toJSON() );
+				  });
+			  }
     	  }
 
     	  return items;
       };
+	  
+	  app.getGlobalItemsSlice = function( global_key, items_ids ) {
+			var items = new Items.ItemsSlice();
+
+			if ( _.has( app.globals, global_key ) ) {
+				var global = app.globals[global_key];
+				if ( items_ids !== undefined && items_ids.length ) {
+					_.each( items_ids, function( post_id ) {
+						items.add( global.get( post_id ) );
+					} );
+				} else {
+					global.each( function(item, key){
+					  items.add( item );
+				  });
+				}
+			}
+
+			return items;
+	  }
 
       app.getGlobalItem = function(global_key,item_id){
     	  var item = null;
@@ -847,37 +933,23 @@ define(function (require) {
     	  return item;
       };
 
-      /**
-       * App init:
-       *  - set options
+	  /**
+       * App options:
        */
-      app.initialize = function ( callback ) {
-      	var nextOps = function() {
-      		if( Config.debug_mode == 'on' ) {
-      			require( ['core/views/debug', 'jquery.velocity'], function( DebugView ) {
-      				var debugView = new DebugView();
-      				debugView.render();
-      			});
-      		}
-
-		  	// If a callback was passed, call it
-		  	if( undefined !== callback ) {
-		  		callback();
-		  	}
-      	}
-
-      	// Retrieve all existing options
+	  
+	  // Retrieve all existing options
+	  var fetchOptions = function( callback ){
       	app.options.fetch( {
       		'success': function( appOptions, response, options ) {
 				Utils.log( 'Options retrieved from local storage.', { options: appOptions } );
-				app.saveOptions( nextOps );
+				app.saveOptions( callback );
 	      	},
 	      	'error': function( appOptions, response, options ) {
-	      		app.saveOptions( nextOps );
+	      		app.saveOptions( callback );
 	      	}
       	});
-      };
-
+	  };
+	  
       app.saveOptions = function( callback ) {
       	// Retrieve options from Config and store them locally
       	_.each( Config.options, function( value, key, list ) {
@@ -894,9 +966,37 @@ define(function (require) {
 	  		callback();
 	  	}
       };
+	  
+	  /**
+       * App init:
+       *  - set options
+	   *  - initialize addons
+       */
+      app.initialize = function ( callback ) {
 
+		fetchOptions(function(){
+			
+			Addons.initialize( function(){
+				
+				if( Config.debug_mode == 'on' ) {
+					require( ['core/views/debug', 'jquery.velocity'], function( DebugView ) {
+						var debugView = new DebugView();
+						debugView.render();
+					});
+				}
+				
+				// If a callback was passed, call it
+				if( undefined !== callback ) {
+					callback();
+				}
+			});
+			
+		});
+      	
+      };
+	  
 	//--------------------------------------------------------------------------
-	//Network : handle network state if the Network PhoneGap plugin is available
+	//Network : handle network state if the Network phonegap plugin is available
 
 	app.onOnline = function(){
 		vent.trigger('network:online');

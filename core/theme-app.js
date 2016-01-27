@@ -15,7 +15,7 @@ define( function( require, exports ) {
 			App = require( 'core/app' ),
 			Hooks = require( 'core/lib/hooks' ),
 			TemplateTags = require( 'core/theme-tpl-tags' ),
-			PhoneGap = require( 'core/phonegap-utils' );
+			PhoneGap = require( 'core/phonegap/utils' );
 
 	var themeApp = { };
 
@@ -28,6 +28,15 @@ define( function( require, exports ) {
 	 */
 	var vent = _.extend( { }, Backbone.Events );
 
+	/**
+	 * Allows themes (and addons) to trigger events
+	 * @param string event Event id
+	 * @param JSON object data
+	 */
+	themeApp.trigger = function( event, data ) {
+		vent.trigger( event, data );
+	};
+	
 	/**
 	 * Aggregate App and RegionManager events
 	 */
@@ -160,12 +169,12 @@ define( function( require, exports ) {
 	/************************************************
 	 * Filters, actions and Params management
 	 */
-	themeApp.filter = function( filter, callback ) {
-		Hooks.addFilter( filter, callback );
+	themeApp.filter = function( filter, callback, priority ) {
+		Hooks.addFilter( filter, callback, priority );
 	}
 
-	themeApp.action = function( action, callback ) {
-		Hooks.addAction( action, callback );
+	themeApp.action = function( action, callback, priority ) {
+		Hooks.addAction( action, callback, priority );
 	}
 
 	themeApp.setParam = function( param, value ) {
@@ -479,14 +488,36 @@ define( function( require, exports ) {
 	};
 
 	/************************************************
-	 * App infos management
+	 * App custom pages and custom routes management
 	 */
 
-	themeApp.showCustomPage = function( template, data ) {
+	themeApp.showCustomPage = function( template, data, id ) {
 		if ( template === undefined ) {
 			template = 'custom';
 		}
-		App.showCustomPage( template, data );
+		if ( data === undefined ) {
+			data = {};
+		}
+		if ( id === undefined ) {
+			id = 'auto-custom-page';
+		}
+		App.showCustomPage( template, data, id );
+	};
+	
+	themeApp.addCustomRoute = function( fragment, template, data ) {
+		fragment = fragment.replace('#','');
+		if ( template === undefined ) {
+			template = 'custom';
+		}
+		if ( data === undefined ) {
+			data = {};
+		}
+		App.addCustomRoute( fragment, template, data );
+	};
+	
+	themeApp.removeCustomRoute = function( fragment ) {
+		fragment = fragment.replace('#','');
+		App.removeCustomRoute( fragment );
 	};
 
 	/**
@@ -545,6 +576,29 @@ define( function( require, exports ) {
     	}
     };
 
+	/**************************************************
+	 * Retrieve internal app data that can be useful in themes
+	 */
+
+	themeApp.getGlobalItems = function( global_key, items_ids, result_type ) {
+		var items = null;
+		
+		if( result_type === undefined ) {
+			result_type = 'slice';
+		}
+		
+		switch( result_type ) {
+			case 'slice' :
+				items = App.getGlobalItemsSlice( global_key, items_ids );
+				break;
+			case 'array' :
+				items = App.getGlobalItems( global_key, items_ids );
+				break;
+		}
+		
+		return items;
+	};
+	
 	//Use exports so that theme-tpl-tags and theme-app (which depend on each other, creating
 	//a circular dependency for requirejs) can both be required at the same time
 	//(in theme functions.js for example) :

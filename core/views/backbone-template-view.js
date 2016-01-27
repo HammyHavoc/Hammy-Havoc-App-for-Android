@@ -28,13 +28,25 @@ define(function (require) {
     	template_name: 'default',
     	fallback_template_name: '',
     	template: null,
+		is_static: false,
     	
     	/**
     	 * Called in router to validate the view's template before showing the screen.
     	 */
     	checkTemplate : function(cb_ok,cb_error){
         	var _this = this;
-        	require(['text!theme/'+ this.template_name +'.html'],
+			
+			var template_file = 'text!';
+			
+			if( this.template_name.match(/^addons\//g) ) {
+				template_file += this.template_name;
+			} else {
+				template_file += 'theme/'+ this.template_name;
+			}
+					
+			template_file += '.html';
+			
+        	require([template_file],
   					function(tpl){
   						_this.template = _.template(tpl);
   						cb_ok();
@@ -72,7 +84,7 @@ define(function (require) {
         	
         	var template = default_template != undefined ? default_template : '';
         	
-    		template = Hooks.applyFilter('template',template,[App.getQueriedScreen()]);
+    		template = Hooks.applyFilters('template',template,[App.getQueriedScreen()]);
 
     		if( template != ''){
     			this.template_name = template;
