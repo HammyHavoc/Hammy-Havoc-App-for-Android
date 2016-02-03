@@ -3,7 +3,7 @@
         xmlns:gap   = "http://phonegap.com/ns/1.0"
         id          = "com.hammyhavoc"
         versionCode = ""
-        version     = "1.0" >
+        version     = "1.1" >
 
 	<name>Hammy Havoc</name>
 
