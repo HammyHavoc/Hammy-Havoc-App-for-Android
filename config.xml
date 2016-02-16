@@ -2,8 +2,8 @@
 <widget xmlns       = "http://www.w3.org/ns/widgets"
         xmlns:gap   = "http://phonegap.com/ns/1.0"
         id          = "com.hammyhavoc"
-        versionCode = "2"
-        version     = "1.1" >
+        versionCode = "3"
+        version     = "1.2" >
 
 	<name>Hammy Havoc</name>
 
@@ -20,6 +20,7 @@
 	<gap:plugin name="cordova-plugin-inappbrowser" source="npm" />
 	<gap:plugin name="cordova-plugin-network-information" source="npm" />
 	<gap:plugin name="cordova-plugin-whitelist" source="npm" />
+	<gap:plugin name="cordova-plugin-splashscreen" source="pgb" />
 	
 	<!-- Whitelist policy  -->
 	<access origin="*" />
