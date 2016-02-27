@@ -82,9 +82,9 @@ body {
  */
 
 .header {
-	background-color:#666666;
+	background-color:#3a0059;
 	border-bottom:2px #585858 solid;
-	box-shadow:0px 1px 1px #666666 ;
+	box-shadow:0px 1px 1px #3a0059 ;
 }
 
 .tab-bar {
@@ -101,8 +101,8 @@ body {
 .message {
 	background-color:#c74b46;
 	color:#ffffff;
-	border-bottom:1px #666666 solid;
-	box-shadow:0px 1px 1px #666666;
+	border-bottom:1px #3a0059 solid;
+	box-shadow:0px 1px 1px #3a0059;
 	line-height:15px;
 }
 
